@@ -15,8 +15,8 @@ class Test_ImageProcessing(unittest.TestCase):
         If anything is returned, the test should pass. 
 
         """
-        matrix_one = np.ones([3, 3], int)
-        matrix_two = np.ones([3, 3], int)
+        matrix_one = np.ones([3, 3])
+        matrix_two = np.ones([3, 3])
         list_matrix_ones = []
         list_matrix_ones.append(matrix_one)
         list_matrix_ones.append(matrix_two)
