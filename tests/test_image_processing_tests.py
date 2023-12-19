@@ -21,6 +21,8 @@ class Test_ImageProcessing(unittest.TestCase):
         list_matrix_ones.append(matrix_one)
         list_matrix_ones.append(matrix_two)
         try:
-            self.assertAlmostEqual(image_toolbox.img_avg(list_matrix_ones).any(), 1)
+            test_result_matrix = image_toolbox.img_avg(list_matrix_ones)
+            test_result_value = test_result_matrix[1, 1]
+            self.assertAlmostEqual(test_result_value, 1)
         except RuntimeError:
             self.assertRaises(RuntimeError)
