@@ -8,6 +8,7 @@ import pathlib
 import os
 import numpy as np
 from PIL import Image
+import plotly.express as px
 
 def collect_images(folder_of_img: str):
     """
@@ -27,7 +28,8 @@ def collect_images(folder_of_img: str):
     list_image_names = [filename for filename in allfiles if filename[-4:] in [".jpg",".JPG"]]
     #list_of_images = np.array(Image.open(list_image_names),dtype=float)
     list_of_images = [np.array(Image.open(os.path.join(repo_path,
-                                                       r"images/heatmap_speed",
+                                                       r"images",
+                                                       folder_of_img,
                                                        img))) for img in list_image_names]
     return list_of_images
 
@@ -98,4 +100,19 @@ def flat_field_correction(raw: np, flat: np, dark: np):
     FmD = flat - dark
     m = np.average(FmD)
     return ((raw - dark)*(m/FmD))
+
+def plot_it(heatmap_image):
+    """
+    Plot heatmap image
+
+    Arguments:
+    ----------
+    heatmap_image (np): np from pressure calculated image
+    
+    Returns:
+    ----------  
+    
+    """
+    fig = px.imshow(heatmap_image, color_continuous_scale="temps")
+    fig.show()
     
