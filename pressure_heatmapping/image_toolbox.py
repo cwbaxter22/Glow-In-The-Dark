@@ -98,3 +98,4 @@ def flat_field_correction(raw: np, flat: np, dark: np):
     FmD = flat - dark
     m = np.average(FmD)
     return ((raw - dark)*(m/FmD))
+    
