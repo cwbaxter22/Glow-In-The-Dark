@@ -9,22 +9,22 @@ import os
 import numpy as np
 from PIL import Image
 
-def collect_images(folder_of_img):
+def collect_images(folder_of_img: str):
     """
-    Collect images from directory where images are stored and put them in an array.
+    Collect images from directory where images are stored and put them in an array as np arrays.
 
     Arguments:
     ----------
-    folder_of_img (str): folder images will be pulled from
+    folder_of_img (str): folder directory images will be pulled from
     
     Returns:
     ----------
-    list_images (list of np arrays): Every image from the chosen directory 
+    list_images (list of np arrays): list of images from passed directory 
     
     """
     repo_path = pathlib.Path(__file__).parents[1]
     allfiles=os.listdir(os.path.join(repo_path, r"images", folder_of_img))
-    list_image_names = [filename for filename in allfiles if  filename[-4:] in [".jpg",".JPG"]]
+    list_image_names = [filename for filename in allfiles if filename[-4:] in [".jpg",".JPG"]]
     #list_of_images = np.array(Image.open(list_image_names),dtype=float)
     list_of_images = [np.array(Image.open(os.path.join(repo_path,
                                                        r"images/heatmap_speed",
@@ -41,10 +41,11 @@ def img_avg(list_imgs: list):
     
     Returns:
     ----------
-    img_averaged (img): 
+    img_averaged (np array): one image that is a matrix avg of the input images 
     
     """
-    #https://stackoverflow.com/questions/17291455/how-to-get-an-average-picture-from-100-pictures-using-pil
+    #https://stackoverflow.com/questions/17291455
+    #/how-to-get-an-average-picture-from-100-pictures-using-pil
 
     #All pictures are the same size, so grab the dimenions of the first image
     first_image = Image.fromarray(list_imgs[0])
@@ -62,3 +63,21 @@ def img_avg(list_imgs: list):
     #Round the value of each float and cast it to 8-bit integer
     images_averaged = np.array(np.round(arr),dtype=np.uint8)
     return images_averaged
+
+def img_crop(list_imgs: list, yMinC: int, yMaxC: int, xMinC: int, xMaxC: int):
+    """
+    Take a list of images and crop them to given dimensions based on vertex points
+
+    Arguments:
+    ----------
+    list_imgs (list np): list containing all image arrays to be cropped
+    
+    Returns:
+    ----------
+    list_cropped (list np): list of images cropped to dimenions specified 
+    
+    """
+    list_cropped = [im[yMinC:yMaxC, xMinC:xMaxC] for im in list_imgs]
+    return list_cropped
+
+        
