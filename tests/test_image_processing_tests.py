@@ -1,14 +1,22 @@
+"""Test image processing library"""
+
 import unittest
+import numpy as np
 from pressure_heatmapping import image_toolbox
 
-import numpy as np
-
-
 class Test_ImageProcessing(unittest.TestCase):
-    '''DF creation: smoke (1), oneshot (2)
+    '''DF creation: smoke (1)
     
     Path to df defined in initialization,
     If folder is moved, most tests will fail.'''
+    def test_one_shot_img_collection(self):
+        """
+        Collect all images from the images/heatmap_speed dir
+        """
+        try:
+            image_toolbox.collect_images("heatmap_speed")
+        except RuntimeError:
+            self.assertRaises(RuntimeError)
     def test_one_shot_img_avg(self):
         """
         Pass a random set of arrays to image averaging function.
