@@ -37,7 +37,8 @@ class Test_ImageProcessing(unittest.TestCase):
             self.assertRaises(RuntimeError)
     def test_one_shot_img_crop(self):
         """
-        Pass a np array of a certain size to the crop function and make sure it returns the correct size
+        Pass a numpy array of a certain size to the crop function
+          and make sure it returns the correct size
 
         """
         test_image_matrix = np.ones([100, 100])
@@ -49,3 +50,13 @@ class Test_ImageProcessing(unittest.TestCase):
             self.assertAlmostEqual(h, 49)
         except RuntimeError:
             self.assertRaises(RuntimeError)
+    def test_flat_field_correction(self):
+        """
+        If flat and raw are equal, solution should be the null matrix
+
+        """
+        tRaw = np.ones([3, 3])
+        tFlat = np.ones([3, 3])*2
+        tDark = np.ones([3, 3])
+        tCorrected_Image =  image_toolbox.flat_field_correction(tRaw, tFlat, tDark)
+        self.assertAlmostEqual(tCorrected_Image[0, 0], 0)

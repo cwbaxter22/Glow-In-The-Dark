@@ -80,4 +80,21 @@ def img_crop(list_imgs: list, yMinC: int, yMaxC: int, xMinC: int, xMaxC: int):
     list_cropped = [im[yMinC:yMaxC, xMinC:xMaxC] for im in list_imgs]
     return list_cropped
 
-        
+def flat_field_correction(raw: np, flat: np, dark: np):
+    """
+    Apply Flat Field correction to test images
+
+    Arguments:
+    ----------
+    raw (np): np from raw image
+    flat (np): np from image taken of white piece of paper
+    dark (np): np from image taken with lens cap on
+    
+    Returns:
+    ----------
+    corrected_matrix (np): np with correction applied  
+    
+    """
+    FmD = flat - dark
+    m = np.average(FmD)
+    return ((raw - dark)*(m/FmD))
