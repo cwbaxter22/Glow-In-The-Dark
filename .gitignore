@@ -143,3 +143,6 @@ flat_field/*
 
 heatmap_speed/*
 !heatmap_speed/__init__.py
+
+pd_calibration_curve/*
+!heatmap_speed/__init__.py
