@@ -2,6 +2,10 @@
 Simple module designed to allow for quick plot creation of samples.
 Please remove any sample names before each push to avoid sharing research data.
 Data itself is filtered out in the .gitignore/ should not be git added
+
+To run in the shell use the command:
+python -c 'import sv_creation;
+sv_creation.plot_creation(["sample_1", "sample_2", "sample_3"], lowerb, upperb)'
 """
 
 import os
@@ -38,10 +42,10 @@ def create_sv(folder_of_wl, LOWER_B, UPPER_B):
     ratios = areas_under_curve[0] / areas_under_curve
     return ox_conc, ratios
 
-def plot_creation(samples):
+def plot_creation(samples, lower_bound, upper_bound):
     plt.figure()
     for sample_num in samples:
-        ox_conc_out, ratios_out = create_sv(sample_num, 645, 670)
+        ox_conc_out, ratios_out = create_sv(sample_num, lower_bound, upper_bound)
         plt.scatter(ox_conc_out, ratios_out, label=sample_num)
 
     plt.xlabel('Oxygen Concentration (%)')
