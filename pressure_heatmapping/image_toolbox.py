@@ -9,6 +9,7 @@ import os
 import numpy as np
 from PIL import Image
 import plotly.express as px
+import matplotlib.pyplot as plt
 
 def collect_images(folder_of_img: str):
     """
@@ -82,37 +83,38 @@ def img_crop(list_imgs: list, yMinC: int, yMaxC: int, xMinC: int, xMaxC: int):
     list_cropped = [im[yMinC:yMaxC, xMinC:xMaxC] for im in list_imgs]
     return list_cropped
 
-def flat_field_correction(raw: np, flat: np, dark: np):
-    """
-    Apply Flat Field correction to test images
+def flat_field_correction(data_image, ambient_image, dark_current_image, flat_field_image):
+    # Ensure all images have the same dimensions
+    assert data_image.shape == ambient_image.shape == dark_current_image.shape == flat_field_image.shape
 
-    Arguments:
-    ----------
-    raw (np): np from raw image
-    flat (np): np from image taken of white piece of paper
-    dark (np): np from image taken with lens cap on
-    
-    Returns:
-    ----------
-    corrected_matrix (np): np with correction applied  
-    
-    """
-    FmD = flat - dark
-    m = np.average(FmD)
-    return ((raw - dark)*(m/FmD))
+    # Convert images to float for accurate calculations
+    data_image = data_image.astype(np.float32)
+    ambient_image = ambient_image.astype(np.float32)
+    dark_current_image = dark_current_image.astype(np.float32)
+    flat_field_image = flat_field_image.astype(np.float32)
 
-def plot_it(heatmap_image):
-    """
-    Plot heatmap image
+    # Correct ambient and flat field images for dark current (camera noise)
+    corrected_ambient = ambient_image - dark_current_image
+    corrected_flat_field = flat_field_image - dark_current_image
 
-    Arguments:
-    ----------
-    heatmap_image (np): np from pressure calculated image
+    # Normalize the flat field image
+    normalized_flat_field = corrected_flat_field / np.mean(corrected_flat_field)
+
+    # Correct the image (subtract dark current and ambient, then divide by normalized flat field)
+    corrected_image = (data_image - dark_current_image - corrected_ambient) / normalized_flat_field
+
+    # Clip values to the valid range for an image (0-255) and convert back to uint8
+    corrected_image = np.clip(corrected_image, 0, 255).astype(np.uint8)
+    data_image = np.clip(data_image, 0, 255).astype(np.uint8)
+    plt.imshow(corrected_image)
+    plt.imshow(data_image)
+    return corrected_image
     
-    Returns:
-    ----------  
-    
-    """
-    fig = px.imshow(heatmap_image, color_continuous_scale="temps")
-    fig.show()
-    
+
+def plot_heatmap(wind_on_image, wind_off_pd_int, wind_off_image, torr_over_wind_off):
+    # Multiply each value of corrected_image by inv_slope
+    heatmap_image = wind_on_image*(np.divide(wind_off_pd_int, wind_off_image))*torr_over_wind_off
+    # Plot a heatmap of the resulting image
+    plt.imshow(heatmap_image, cmap='hot')
+    plt.colorbar(label='Pressure (Torr)')  # Add a colorbar with label
+    plt.show()  # Display the plot
