@@ -4,16 +4,28 @@ from photo_diode import sv_creation
 import numpy as np
 import os
 
-yMinC = 376
-yMaxC = 657
-xMinC = 456
-xMaxC = 933
+#yMinC = 213
+#yMaxC = 660
+#xMinC = 510
+#xMaxC = 860
+
+yMinC = 350
+yMaxC = 370
+xMinC = 840
+xMaxC = 890
+
+#yMinC = 125
+#yMaxC = 190
+#xMinC = 124
+#xMaxC = 175
 
 
-photo_diode_data_directory = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'photo_diode_data')
-wl_folder = next(os.walk(photo_diode_data_directory))[1][0]
-ox_conc, intensities = sv_creation.create_sv(wl_folder, 500, 750, 650)
-inverse_slope, WO_photo_diode_int = sv_creation.convert_to_pressure(ox_conc, intensities)
+p_over_int = sv_creation.generate_SV_from_camera_data(yMinC, yMaxC, xMinC, xMaxC)
+
+
+#photo_diode_data_directory = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'photo_diode_data')
+#wl_folder = next(os.walk(photo_diode_data_directory))[1][0]
+#ox_conc, intensities = sv_creation.create_sv(wl_folder, 500, 750, 650)
 
 raw_data_imgs = image_toolbox.collect_images('heatmap_speed')
 raw_amb_imgs = image_toolbox.collect_images('ambient')
@@ -36,5 +48,7 @@ avg_WO_img = image_toolbox.img_avg(c_WO_imgs)
 corrected_data_image = image_toolbox.flat_field_correction(avg_data_img, avg_amb_img, avg_dark_img, avg_flat_img)
 corrected_wind_off_image = image_toolbox.flat_field_correction(avg_WO_img, avg_amb_img, avg_dark_img, avg_flat_img)
 
-pressure_image = image_toolbox.plot_heatmap(corrected_data_image, WO_photo_diode_int, corrected_wind_off_image, inverse_slope)
+#Torr_over_int = sv_creation.convert_to_pressure(ox_conc, intensities, corrected_wind_off_image)
+
+image_toolbox.plot_heatmap(corrected_data_image, p_over_int)
 #image_toolbox.plot_heatmap(corrected_image, inverse_slope)
