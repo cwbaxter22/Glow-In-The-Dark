@@ -9,10 +9,10 @@ import os
 #xMinC = 510
 #xMaxC = 860
 
-yMinC = 350
-yMaxC = 370
-xMinC = 840
-xMaxC = 890
+yMinC = 430
+yMaxC = 490
+xMinC = 545
+xMaxC = 605
 
 #yMinC = 125
 #yMaxC = 190
@@ -50,5 +50,5 @@ corrected_wind_off_image = image_toolbox.flat_field_correction(avg_WO_img, avg_a
 
 #Torr_over_int = sv_creation.convert_to_pressure(ox_conc, intensities, corrected_wind_off_image)
 
-image_toolbox.plot_heatmap(corrected_data_image, p_over_int)
+image_toolbox.plot_heatmap(corrected_data_image, corrected_wind_off_image, p_over_int)
 #image_toolbox.plot_heatmap(corrected_image, inverse_slope)

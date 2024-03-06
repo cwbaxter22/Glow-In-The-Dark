@@ -16,8 +16,8 @@ import pandas as pd
 from scipy.ndimage import uniform_filter1d
 from scipy.sparse.linalg import spsolve
 from scipy import sparse
-import peakutils
 from scipy.linalg import cholesky
+from pressure_heatmapping import image_toolbox
 
 # https://stackoverflow.com/questions/66039235/how-to-subtract-baseline-from-spectrum-with-rising-tail-in-python
 # Asymmetrically reweighted penalized least squares smoothing 
@@ -131,7 +131,7 @@ def plot_background_subtraction(samples, LOWER_B, UPPER_B):
                 plt.show()
                 break
 
-def convert_to_pressure(ox_conc, intensities):
+def convert_to_pressure(ox_conc, intensities, WO_mat):
     ox_conc = np.array(ox_conc)
     intensities = np.array(intensities)
 
@@ -147,9 +147,112 @@ def convert_to_pressure(ox_conc, intensities):
     #plt.xlabel('Pressure (Torr)')
     #plt.ylabel('Normalized Intensity')
     #plt.show()
-    
+    #I0_over_I = np.zeros((len(intensities), *np.shape(WO_mat)))
+    first_dim = WO_mat.shape[0] 
+    second_dim = WO_mat.shape[1]
+    I0_over_I = np.zeros((first_dim, second_dim, len(intensities)))
+    for pos, i in enumerate(intensities):
+        I0_over_I[:, :, pos] = np.divide(WO_mat, i)
+        
     # Calculate the slope of the line
-    slope = (max(normalized_intensities) - min(normalized_intensities)) / (max(pressure) - min(pressure))
+    largest_index = np.argmax(intensities)
+    smallest_index = np.argmin(intensities)
+
+    for i in range(len(intensities)):
+        print(np.sum(I0_over_I[:, :, i])) 
+        
+    slope_mat = (max(pressure) - min(pressure)) / (I0_over_I[:, :, smallest_index] - I0_over_I[:, :, largest_index])
     
-    #Either this or min(normalized_intensities)
-    return 1/slope, min(normalized_intensities)
+    return slope_mat
+
+def generate_SV_from_camera_data(yMinC, yMaxC, xMinC, xMaxC):
+    # Collect raw images
+    raw_amb_imgs = image_toolbox.collect_images('camera_sv_images/ambient')
+    raw_dark_imgs = image_toolbox.collect_images('camera_sv_images/dark_noise')
+    raw_flat_imgs = image_toolbox.collect_images('camera_sv_images/flat_field')
+    raw_WO_imgs = image_toolbox.collect_images('camera_sv_images/wind_off')
+
+    # Crop images to area that contains the sample
+    c_amb_imgs = image_toolbox.img_crop(raw_amb_imgs, yMinC, yMaxC, xMinC, xMaxC)
+    c_dark_imgs = image_toolbox.img_crop(raw_dark_imgs, yMinC, yMaxC, xMinC, xMaxC)
+    c_flat_imgs = image_toolbox.img_crop(raw_flat_imgs, yMinC, yMaxC, xMinC, xMaxC)
+    c_WO_imgs = image_toolbox.img_crop(raw_WO_imgs, yMinC, yMaxC, xMinC, xMaxC)
+
+    # Average the images: average = sum of each pixel int/num images for each pixel
+    avg_amb_img = image_toolbox.img_avg(c_amb_imgs)
+    avg_dark_img = image_toolbox.img_avg(c_dark_imgs)
+    avg_flat_img = image_toolbox.img_avg(c_flat_imgs)
+    avg_WO_img = image_toolbox.img_avg(c_WO_imgs)
+    #corrected_WO_img = image_toolbox.flat_field_correction(avg_WO_img, avg_amb_img, avg_dark_img, avg_flat_img)
+    #plt.imshow(avg_WO_img)
+    #plt.xlabel("Un-Corrected")
+    #plt.colorbar()
+    #plt.show()
+
+    # repo_path = Glow-In-The-Dark
+    repo_path = pathlib.Path(__file__).parents[1]
+    # pressure_dir = Glow-In-The-Dark/images/camera_sv_images/pressures
+    pressure_dir = os.path.join(repo_path, 'images/camera_sv_images/pressures')
+    # List of all folders in the pressure directory (excludes __init__.py)
+    pressure_folders = [item for item in os.listdir(pressure_dir) if os.path.isdir(os.path.join(pressure_dir, item))]
+    # Use number of folders to initialize arrays to hold pressure images and values
+    pressure_imgs = np.zeros(len(pressure_folders))
+    pressure_val = np.zeros(len(pressure_imgs))
+    first_dim = avg_amb_img.shape[0] 
+    second_dim = avg_amb_img.shape[1]
+    # 3D matrix where each 'page' is the new pressure value
+    intensities = np.zeros((first_dim, second_dim, len(pressure_imgs)))
+
+    # Pressure of image will correspond to folder name
+    for pos, pressure_folder in enumerate(pressure_folders):
+        try:
+            pressure_val[pos] = float(str(pressure_folder).replace('_', '.', 1))
+        except:
+            pressure_val[pos] = float(str(pressure_folder))
+
+    # Sort the pressure values and images so they go from smallest to largest pressure
+    # Simpler to sort now than to try to sort the 3d array later
+    sorted_indices = np.argsort(pressure_val)
+    pressure_val = pressure_val[sorted_indices]
+    pressure_folders = np.asarray(pressure_folders)[sorted_indices]
+
+
+    # Loop though each pressure folder
+    for pos, pressure_folder in enumerate(pressure_folders):
+        raw_pressure_img = image_toolbox.collect_images(f'camera_sv_images/pressures/{pressure_folder}')
+        c_pressure = image_toolbox.img_crop(raw_pressure_img, yMinC, yMaxC, xMinC, xMaxC)
+        avg_pressure_img = image_toolbox.img_avg(c_pressure)
+        # Store the corrected pressure image
+        pressure_img_corrected = image_toolbox.flat_field_correction(avg_pressure_img, avg_amb_img, avg_dark_img, avg_flat_img)
+        intensities[:, :, pos] = np.divide(avg_WO_img, pressure_img_corrected)
+
+    first_dim = intensities.shape[0] 
+    second_dim = intensities.shape[1]
+    I0_over_I = np.zeros((first_dim, second_dim, intensities.shape[2]))
+
+    #for i in np.arange(len(pressure_val)):
+    #    I0_over_I[:, :, i] = np.divide(intensities[:, :, i], corrected_WO_img)
+    I0_over_I = intensities
+       
+    
+    #for row in np.arange(first_dim):
+    #    for pres in np.arange(len(pressure_val)):
+    #        plt.scatter(pressure_val[pres]*np.ones(second_dim), I0_over_I[row, :, pres])
+            
+    
+    slope_mat = np.divide(pressure_val[-1]-pressure_val[0], (I0_over_I[:, :, -1] - I0_over_I[:, :, 0]))
+    
+    for i in np.arange(first_dim):
+        for j in np.arange(second_dim):
+            line = ((1/slope_mat[i, j])*np.ones(len(pressure_val))*pressure_val)
+            plt.plot(pressure_val, line)
+    ax = plt.gca()
+    ax.set_ylim([0, 1.3])
+    plt.show()
+
+    #correction_factor = 1.2
+    #slope_mat = correction_factor*slope_mat
+
+    #slope_mat = np.ones_like(slope_mat)*np.median(slope_mat)
+
+    return slope_mat
