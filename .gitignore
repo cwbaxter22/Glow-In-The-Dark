@@ -134,6 +134,8 @@ dmypy.json
 # Images
 ambient/*
 !ambient/__init__.py
+# No images should be pushed
+*.jpg
 
 dark_noise/*
 !dark_noise/__init__.py
