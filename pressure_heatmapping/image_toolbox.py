@@ -8,7 +8,6 @@ import pathlib
 import os
 import numpy as np
 from PIL import Image
-import plotly.express as px
 import matplotlib.pyplot as plt
 
 def collect_images(folder_of_img: str):
@@ -106,14 +105,16 @@ def flat_field_correction(data_image, ambient_image, dark_current_image, flat_fi
     # Clip values to the valid range for an image (0-255) and convert back to uint8
     corrected_image = np.clip(corrected_image, 0, 255).astype(np.uint8)
     data_image = np.clip(data_image, 0, 255).astype(np.uint8)
-    plt.imshow(corrected_image)
-    plt.imshow(data_image)
+    #plt.imshow(corrected_image)
+    #plt.imshow(data_image)
     return corrected_image
     
 
-def plot_heatmap(wind_on_image, wind_off_pd_int, wind_off_image, torr_over_wind_off):
+def plot_heatmap(wind_on_image, wind_off_image, slope):
     # Multiply each value of corrected_image by inv_slope
-    heatmap_image = wind_on_image*(np.divide(wind_off_pd_int, wind_off_image))*torr_over_wind_off
+    #heatmap_image = wind_on_image*(np.divide(wind_off_pd_int, wind_off_image))*torr_over_wind_off
+    heatmap_image = (wind_off_image/wind_on_image)*slope
+
     # Plot a heatmap of the resulting image
     plt.imshow(heatmap_image, cmap='hot')
     plt.colorbar(label='Pressure (Torr)')  # Add a colorbar with label

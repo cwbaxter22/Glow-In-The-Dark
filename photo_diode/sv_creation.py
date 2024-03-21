@@ -18,6 +18,7 @@ from scipy.sparse.linalg import spsolve
 from scipy import sparse
 from scipy.linalg import cholesky
 from pressure_heatmapping import image_toolbox
+from scipy import stats
 
 # https://stackoverflow.com/questions/66039235/how-to-subtract-baseline-from-spectrum-with-rising-tail-in-python
 # Asymmetrically reweighted penalized least squares smoothing 
@@ -183,12 +184,12 @@ def generate_SV_from_camera_data(yMinC, yMaxC, xMinC, xMaxC):
     avg_dark_img = image_toolbox.img_avg(c_dark_imgs)
     avg_flat_img = image_toolbox.img_avg(c_flat_imgs)
     avg_WO_img = image_toolbox.img_avg(c_WO_imgs)
-    #corrected_WO_img = image_toolbox.flat_field_correction(avg_WO_img, avg_amb_img, avg_dark_img, avg_flat_img)
-    #plt.imshow(avg_WO_img)
-    #plt.xlabel("Un-Corrected")
-    #plt.colorbar()
-    #plt.show()
 
+    # Correct images that need correcting
+    corr_WO_img = image_toolbox.flat_field_correction(avg_WO_img, avg_amb_img, avg_dark_img, avg_flat_img)
+
+    # The averaged ambient, dark, and flat images are used in each flat field correction (shown later)
+    
     # repo_path = Glow-In-The-Dark
     repo_path = pathlib.Path(__file__).parents[1]
     # pressure_dir = Glow-In-The-Dark/images/camera_sv_images/pressures
@@ -216,7 +217,6 @@ def generate_SV_from_camera_data(yMinC, yMaxC, xMinC, xMaxC):
     pressure_val = pressure_val[sorted_indices]
     pressure_folders = np.asarray(pressure_folders)[sorted_indices]
 
-
     # Loop though each pressure folder
     for pos, pressure_folder in enumerate(pressure_folders):
         raw_pressure_img = image_toolbox.collect_images(f'camera_sv_images/pressures/{pressure_folder}')
@@ -224,10 +224,12 @@ def generate_SV_from_camera_data(yMinC, yMaxC, xMinC, xMaxC):
         avg_pressure_img = image_toolbox.img_avg(c_pressure)
         # Store the corrected pressure image
         pressure_img_corrected = image_toolbox.flat_field_correction(avg_pressure_img, avg_amb_img, avg_dark_img, avg_flat_img)
-        intensities[:, :, pos] = np.divide(avg_WO_img, pressure_img_corrected)
+        intensities[:, :, pos] = np.divide(corr_WO_img, pressure_img_corrected)
+        #print(intensities[:, :, pos])
 
     first_dim = intensities.shape[0] 
     second_dim = intensities.shape[1]
+    third_dim = intensities.shape[2]
     I0_over_I = np.zeros((first_dim, second_dim, intensities.shape[2]))
 
     #for i in np.arange(len(pressure_val)):
@@ -238,21 +240,50 @@ def generate_SV_from_camera_data(yMinC, yMaxC, xMinC, xMaxC):
     #for row in np.arange(first_dim):
     #    for pres in np.arange(len(pressure_val)):
     #        plt.scatter(pressure_val[pres]*np.ones(second_dim), I0_over_I[row, :, pres])
-            
-    
-    slope_mat = np.divide(pressure_val[-1]-pressure_val[0], (I0_over_I[:, :, -1] - I0_over_I[:, :, 0]))
-    
-    for i in np.arange(first_dim):
-        for j in np.arange(second_dim):
-            line = ((1/slope_mat[i, j])*np.ones(len(pressure_val))*pressure_val)
-            plt.plot(pressure_val, line)
-    ax = plt.gca()
-    ax.set_ylim([0, 1.3])
-    plt.show()
+    slope = np.zeros_like(I0_over_I)
+    intercept = np.zeros_like(I0_over_I)
+
+    pressure_3d = np.ones_like(I0_over_I)
+    for i in np.arange(third_dim):
+        pressure_3d[:, :, i] = pressure_3d[:, :, i] * pressure_val[i]
+
+    slope_mat = np.zeros((I0_over_I.shape[0], I0_over_I.shape[1]))
+    intercept_mat = np.zeros((I0_over_I.shape[0], I0_over_I.shape[1]))
+
+    for i in range(I0_over_I.shape[0]):
+        for j in range(I0_over_I.shape[1]):
+            slope, intercept, _, _, _ = stats.linregress(pressure_3d[i, j, :], I0_over_I[i, j, :])
+            slope_mat[i, j] = slope
+            intercept_mat[i, j] = intercept  
 
     #correction_factor = 1.2
     #slope_mat = correction_factor*slope_mat
 
     #slope_mat = np.ones_like(slope_mat)*np.median(slope_mat)
 
-    return slope_mat
+    # A is intercept
+    # B is slope
+    return intercept_mat, slope_mat
+
+
+def get_A_B(n_cal, p_p0_array, I0_I_array):
+    """From Owen Brown's dissertation. Trying to perform Least Squares Regression with photo diode data."""
+    # L[A; B]' = C
+    # [A:B]' = L^-1 * C
+    L = np.zeros((2, 2))
+    C = np.zeros((2, 1))
+
+    L[0, 0] = n_cal
+    L[0, 1] = np.sum(p_p0_array)
+    L[1, 0] = np.sum(p_p0_array)
+    L[1, 1] = np.sum(p_p0_array**2)
+
+    C[0, 0] = np.sum(I0_I_array)
+    C[1, 0] = np.sum(p_p0_array*I0_I_array)
+    
+    L_inv = np.linalg.inv(L)
+    A_B = np.dot(L_inv, C)
+    A_sv = A_B[0]
+    B_sv = A_B[1]
+    return A_sv, B_sv
+
